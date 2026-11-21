@@ -1,4 +1,4 @@
-# 🧺 Machine à laver animée — carte Lovelace pour Home Assistant
+# Machine à laver animée — carte Lovelace pour Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-green.svg)](LICENSE)
