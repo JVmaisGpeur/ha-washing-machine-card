@@ -1,4 +1,4 @@
-# Machine à laver animée — carte Lovelace pour Home Assistant
+# <img src="docs/icon.svg" alt="" height="40" align="top"> Machine à laver animée — carte Lovelace pour Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-green.svg)](LICENSE)
@@ -30,6 +30,7 @@ La carte affiche aussi la **puissance soutirée** et la **durée du cycle en cou
 - Un appui ouvre la fenêtre de détail du capteur de puissance
 - S'adapte au thème de Home Assistant (mode clair et sombre)
 - Respecte le réglage système « réduire les animations » (`prefers-reduced-motion`)
+- Éditeur visuel : choix du capteur de puissance et des seuils sans YAML
 - Aucune dépendance : un seul fichier JavaScript
 
 ## 📦 Installation
@@ -49,6 +50,15 @@ La carte affiche aussi la **puissance soutirée** et la **durée du cycle en cou
 3. Recharge la page (Ctrl+Maj+R)
 
 ## ⚙️ Configuration
+
+### Éditeur visuel
+
+Ajoute la carte **Machine à laver animée** depuis le sélecteur de cartes. Tous les réglages se font sans YAML :
+- le **capteur de puissance** se choisit dans une liste qui ne montre que les capteurs en W, et la carte en propose un automatiquement ;
+- l'indicateur « cycle en cours » et la date de début sont optionnels ;
+- les **seuils de phase** se règlent dans une section dépliable.
+
+### YAML
 
 ```yaml
 type: custom:washing-machine-card

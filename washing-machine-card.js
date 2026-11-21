@@ -1,5 +1,5 @@
 /*
- * washing-machine-card — carte Lovelace animée pour lave-linge à hublot
+ * washing-machine-card v1.0.0 — carte Lovelace animée pour lave-linge à hublot
  * Auteur : JVmaisGpeur — Licence MIT
  *
  * type: custom:washing-machine-card
@@ -12,6 +12,8 @@
  * pause_threshold: W en dessous desquels le tambour est en pause  (défaut 15)
  */
 
+const WMC_VERSION = "1.0.0";
+
 const WMC_PHASES = {
   idle:  { label: "À l'arrêt",   color: "var(--disabled-text-color, #9e9e9e)" },
   pause: { label: "Pause",       color: "#8e9aaf" },
@@ -22,9 +24,7 @@ const WMC_PHASES = {
 
 class WashingMachineCard extends HTMLElement {
   setConfig(config) {
-    if (!config || !config.power_entity) {
-      throw new Error("power_entity est obligatoire");
-    }
+    if (!config) throw new Error("Configuration invalide");
     this._config = {
       name: "Machine à laver",
       heat_threshold: 1000,
@@ -36,8 +36,17 @@ class WashingMachineCard extends HTMLElement {
     if (this.shadowRoot) this.shadowRoot.innerHTML = "";
   }
 
-  static getStubConfig() {
-    return { power_entity: "", running_entity: "", start_entity: "", name: "Machine à laver" };
+  static getConfigElement() {
+    return document.createElement("washing-machine-card-editor");
+  }
+
+  static getStubConfig(hass) {
+    const ids = hass ? Object.keys(hass.states) : [];
+    const power = ids.filter((id) => id.startsWith("sensor.") &&
+      hass.states[id].attributes.device_class === "power");
+    const guess = power.find((id) => /lave|laver|washing|washer|machine/i.test(
+      id + " " + (hass.states[id].attributes.friendly_name || ""))) || power[0] || "";
+    return { name: "Machine à laver", power_entity: guess };
   }
 
   getCardSize() { return 3; }
@@ -347,7 +356,9 @@ class WashingMachineCard extends HTMLElement {
       e.durlbl.textContent = "Cycle";
       e.dur.textContent = "—";
       e.lcd.textContent = "--:--";
-      e.sub.textContent = this._start ? `Dernier démarrage : ${this._fmtStart(this._start)}` : "";
+      e.sub.textContent = !this._config.power_entity
+        ? "⚠️ Choisis un capteur de puissance dans les réglages de la carte"
+        : this._start ? `Dernier démarrage : ${this._fmtStart(this._start)}` : "";
     }
   }
 
@@ -368,8 +379,88 @@ class WashingMachineCard extends HTMLElement {
   }
 }
 
+/* ---------- éditeur visuel ---------- */
+
+const WMC_SCHEMA = [
+  { name: "name", selector: { text: {} } },
+  { name: "power_entity", required: true,
+    selector: { entity: { filter: { domain: "sensor", device_class: "power" } } } },
+  { name: "running_entity",
+    selector: { entity: { filter: { domain: ["input_boolean", "binary_sensor", "switch"] } } } },
+  { name: "start_entity",
+    selector: { entity: { filter: { domain: ["input_datetime", "sensor"] } } } },
+  { type: "expandable", name: "", title: "Seuils de détection des phases", schema: [
+    { type: "grid", name: "", schema: [
+      { name: "heat_threshold",  selector: { number: { min: 0, max: 5000, step: 10, mode: "box", unit_of_measurement: "W" } } },
+      { name: "spin_threshold",  selector: { number: { min: 0, max: 3000, step: 5,  mode: "box", unit_of_measurement: "W" } } },
+      { name: "pause_threshold", selector: { number: { min: 0, max: 200,  step: 1,  mode: "box", unit_of_measurement: "W" } } },
+    ] },
+  ] },
+];
+
+const WMC_LABELS = {
+  name: "Nom",
+  power_entity: "Capteur de puissance (W)",
+  running_entity: "Indicateur « cycle en cours » (optionnel)",
+  start_entity: "Date/heure de début du cycle (optionnel)",
+  heat_threshold: "Chauffe à partir de",
+  spin_threshold: "Essorage à partir de",
+  pause_threshold: "Pause en dessous de",
+};
+
+const WMC_HELPERS = {
+  power_entity: "Capteur de la prise connectée de la machine",
+  running_entity: "Sans lui, la machine est « en marche » dès que la puissance dépasse le seuil de pause",
+  start_entity: "Sans lui, l'heure de début est celle du passage à « on » de l'indicateur",
+};
+
+class WashingMachineCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (!this._form) {
+      this._form = document.createElement("ha-form");
+      this._form.computeLabel = (s) => WMC_LABELS[s.name] || s.title || s.name;
+      this._form.computeHelper = (s) => WMC_HELPERS[s.name];
+      this._form.addEventListener("value-changed", (ev) => {
+        ev.stopPropagation();
+        const config = { ...ev.detail.value };
+        Object.keys(config).forEach((k) => {
+          if (config[k] === "" || config[k] === undefined || config[k] === null) delete config[k];
+        });
+        this._config = config;
+        this.dispatchEvent(new CustomEvent("config-changed", {
+          detail: { config }, bubbles: true, composed: true,
+        }));
+      });
+      this.appendChild(this._form);
+    }
+    this._form.hass = this._hass;
+    this._form.schema = WMC_SCHEMA;
+    this._form.data = {
+      heat_threshold: 1000, spin_threshold: 260, pause_threshold: 15,
+      ...this._config,
+    };
+  }
+}
+
+if (!customElements.get("washing-machine-card-editor")) {
+  customElements.define("washing-machine-card-editor", WashingMachineCardEditor);
+}
+
 if (!customElements.get("washing-machine-card")) {
   customElements.define("washing-machine-card", WashingMachineCard);
+  console.info(`%c WASHING-MACHINE-CARD %c v${WMC_VERSION} `,
+    "color:#fff;background:#2196f3;font-weight:700", "color:#2196f3;background:#fff;font-weight:700");
   window.customCards = window.customCards || [];
   window.customCards.push({
     type: "washing-machine-card",
