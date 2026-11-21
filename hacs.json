@@ -1,0 +1,7 @@
+{
+  "name": "Machine à laver animée (Washing Machine Card)",
+  "filename": "washing-machine-card.js",
+  "content_in_root": true,
+  "render_readme": true,
+  "homeassistant": "2024.1.0"
+}
